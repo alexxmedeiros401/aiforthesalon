@@ -4,7 +4,7 @@ import os
 from config import BASE_URL
 
 from fastapi import FastAPI
-from vocode.streaming.models.telephony import TwilioConfig
+from vocode.streaming.models.telephony import TelnyxConfig  # Replace Twilio with Telnyx
 
 # Import both if using ngrok
 # from pyngrok import ngrok
@@ -13,10 +13,10 @@ from memory_config import config_manager
 from vocode.streaming.models.agent import ChatGPTAgentConfig
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.telephony.server.base import (
-    TwilioInboundCallConfig,
+    TelnyxInboundCallConfig,  # Replace Twilio with Telnyx
     TelephonyServer,
 )
-from vocode.streaming.models.synthesizer import StreamElementsSynthesizerConfig # ,ElevenLabsSynthesizerConfig
+from vocode.streaming.models.synthesizer import StreamElementsSynthesizerConfig  # ,ElevenLabsSynthesizerConfig
 
 # Imports our custom actions
 from speller_agent import SpellerAgentFactory
@@ -39,7 +39,7 @@ logger.setLevel(logging.DEBUG)
 
 # We store the state of the call in memory
 # You can customize the config within the memory_config.py
-CONFIG_MANAGER = config_manager  #RedisConfigManager()
+CONFIG_MANAGER = config_manager  # RedisConfigManager()
 
 # Activate this if you want to support NGROK
 # if not BASE_URL:
@@ -47,23 +47,22 @@ CONFIG_MANAGER = config_manager  #RedisConfigManager()
 #     if ngrok_auth is not None:
 #         ngrok.set_auth_token(ngrok_auth)
 #     port = sys.argv[sys.argv.index("--port") + 1] if "--port" in sys.argv else 3000
-# 
+#
 #     # Open a ngrok tunnel to the dev server
 #     BASE_URL = ngrok.connect(port).public_url.replace("https://", "")
 #     logger.info('ngrok tunnel "{}" -> "http://127.0.0.1:{}"'.format(BASE_URL, port))
-# 
+#
 
-# Only continue of the base URL was set within the environment variable. 
+# Only continue if the base URL was set within the environment variable.
 if not BASE_URL:
     raise ValueError("BASE_URL must be set in environment if not using pyngrok")
 
 
-# Now we need a Twilio account and number from which to make our call.
-# You can make an account here: https://www.twilio.com/docs/iam/access-tokens#step-2-api-key
-# Ensure your account is NOT in trial as otherwise it won't work
-TWILIO_CONFIG = TwilioConfig(
-  account_sid=os.environ.get("TWILIO_ACCOUNT_SID"),
-  auth_token=os.environ.get("TWILIO_AUTH_TOKEN"),
+# Now we need a Telnyx account and number from which to make our call.
+# You can make an account here: https://telnyx.com
+# Ensure your account has a number for use
+TELNYX_CONFIG = TelnyxConfig(
+  api_key=os.environ.get("TELNYX_API_KEY"),
 )
 
 # Get the instructions for the assistant
@@ -84,7 +83,7 @@ AGENT_CONFIG = ChatGPTAgentConfig(
 )
 
 # Now we'll give our agent a voice and ears.
-# Our default speech to text engine is DeepGram, so you'll need to set
+# Our default speech-to-text engine is DeepGram, so you'll need to set
 # the env variable DEEPGRAM_API_KEY to your Deepgram API key.
 # https://deepgram.com/
 
@@ -96,18 +95,16 @@ SYNTH_CONFIG = StreamElementsSynthesizerConfig.from_telephone_output_device()
 # SYNTH_CONFIG = ElevenLabsSynthesizerConfig.from_telephone_output_device(
 #   api_key=os.getenv("ELEVEN_LABS_API_KEY") or "<your EL token>")
 
-
-
 # This is where we spin up the Telephony server to get the calls running
 telephony_server = TelephonyServer(
     base_url=BASE_URL,
     config_manager=config_manager,
     inbound_call_configs=[
-        TwilioInboundCallConfig(
+        TelnyxInboundCallConfig(  # Replacing TwilioInboundCallConfig with Telnyx
             url="/inbound_call",
             agent_config=AGENT_CONFIG,
-            twilio_config=TWILIO_CONFIG, 
-            synthesizer_config=SYNTH_CONFIG,           
+            telnyx_config=TELNYX_CONFIG,  # Use Telnyx config instead of Twilio
+            synthesizer_config=SYNTH_CONFIG,
         )
     ],
     events_manager=EventsManager(),
